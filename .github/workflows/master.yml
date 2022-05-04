@@ -1,0 +1,59 @@
+name: build_owrt
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout master directory
+      uses: actions/checkout@v2
+
+    - name: Initialize build environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004) aria2
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+
+    - name: Clone OpenWrt source code
+      run: |
+        git clone https://github.com/openwrt/openwrt
+        cd openwrt
+        patch -p1 -i ../u7621-06-16m-increase-spi-freq.diff
+        patch -p1 -i ../c336a3cf4b2833a1ab81d3a9277c4cec1f33bff5.diff
+        patch -p1 -i ../aria2-download.diff
+
+    - name: Update & Install feeds
+      run: |
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Load custom configuration
+      run: |
+        cd openwrt
+        cp ../diffconfig .config
+        make defconfig
+
+    - name: Download packages
+      run: |
+        cd openwrt
+        make download -j8
+
+    - name: Build firmware
+      run: |
+        cd openwrt
+        make -j8
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name : Upload bin directory
+      uses: actions/upload-artifact@master
+      with:
+        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: openwrt/bin

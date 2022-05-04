@@ -1,0 +1,14 @@
+diff --git a/target/linux/ramips/dts/mt7621_unielec_u7621-06-16m.dts b/target/linux/ramips/dts/mt7621_unielec_u7621-06-16m.dts
+index e9789cff5d..35036e8320 100644
+--- a/target/linux/ramips/dts/mt7621_unielec_u7621-06-16m.dts
++++ b/target/linux/ramips/dts/mt7621_unielec_u7621-06-16m.dts
+@@ -18,7 +18,8 @@
+ 	flash@0 {
+ 		compatible = "jedec,spi-nor";
+ 		reg = <0>;
+-		spi-max-frequency = <14000000>;
++		spi-max-frequency = <50000000>;
++		m25p,fast-read;
+ 
+ 		partitions {
+ 			compatible = "fixed-partitions";
