@@ -1,4 +1,3 @@
-バイナリーファイル openwrt-base/.git/index とopenwrt-base-b/.git/index は異なります
 diff -urN openwrt-base/scripts/download.pl openwrt-base-b/scripts/download.pl
 --- openwrt-base/scripts/download.pl	2022-05-04 22:24:13.947397356 +0900
 +++ openwrt-base-b/scripts/download.pl	2022-05-04 23:25:08.167804412 +0900

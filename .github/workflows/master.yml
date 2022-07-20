@@ -22,10 +22,10 @@ jobs:
 
     - name: Clone OpenWrt source code
       run: |
-        git clone https://github.com/openwrt/openwrt
+        git clone https://github.com/arinc9/openwrt -b mt7621-dts-work
         cd openwrt
         patch -p1 -i ../u7621-06-16m-increase-spi-freq.diff
-        patch -p1 -i ../c336a3cf4b2833a1ab81d3a9277c4cec1f33bff5.diff
+        patch -p1 -i ../add-lar_disable-patch.diff
         patch -p1 -i ../aria2-download.diff
 
     - name: Update & Install feeds
@@ -37,7 +37,7 @@ jobs:
     - name: Load custom configuration
       run: |
         cd openwrt
-        cp ../diffconfig .config
+        cp ../diffconfig-iwlwifi .config
         make defconfig
 
     - name: Download packages

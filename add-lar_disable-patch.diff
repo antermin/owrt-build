@@ -1,0 +1,95 @@
+diff -urN openwrt/package/kernel/mac80211/Makefile openwrt-b/package/kernel/mac80211/Makefile
+--- openwrt/package/kernel/mac80211/Makefile	2022-07-20 15:23:16.399820647 +0900
++++ openwrt-b/package/kernel/mac80211/Makefile	2022-07-20 15:25:27.414267424 +0900
+@@ -500,6 +500,7 @@
+ 	$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/mwl,mwl/)
+ 	$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/brcm,brcm/)
+ 	$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/rtl,rtl/)
++	$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/iwlwifi,iwlwifi/)
+ 	$(if $(QUILT),touch $(PKG_BUILD_DIR)/.quilt_used)
+ endef
+ 
+@@ -515,6 +516,7 @@
+ 	$(call Quilt/RefreshDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/mwl,mwl/)
+ 	$(call Quilt/RefreshDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/brcm,brcm/)
+ 	$(call Quilt/RefreshDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/rtl,rtl/)
++	$(call Quilt/RefreshDir,$(PKG_BUILD_DIR),$(PATCH_DIR)/iwlwifi,iwlwifi/)
+ endef
+ 
+ define Build/Compile
+diff -urN openwrt/package/kernel/mac80211/patches/iwlwifi/001-iwlwifi-lar_disable.patch openwrt-b/package/kernel/mac80211/patches/iwlwifi/001-iwlwifi-lar_disable.patch
+--- openwrt/package/kernel/mac80211/patches/iwlwifi/001-iwlwifi-lar_disable.patch	1970-01-01 09:00:00.000000000 +0900
++++ openwrt-b/package/kernel/mac80211/patches/iwlwifi/001-iwlwifi-lar_disable.patch	2022-07-20 15:20:17.659515863 +0900
+@@ -0,0 +1,72 @@
++diff -urN a/drivers/net/wireless/intel/iwlwifi/iwl-drv.c b/drivers/net/wireless/intel/iwlwifi/iwl-drv.c
++--- a/drivers/net/wireless/intel/iwlwifi/iwl-drv.c	2022-04-11 04:01:11.860816700 +0900
+++++ b/drivers/net/wireless/intel/iwlwifi/iwl-drv.c	2022-07-20 15:15:57.210595531 +0900
++@@ -1710,6 +1710,7 @@
++ 	.bt_coex_active = true,
++ 	.power_level = IWL_POWER_INDEX_1,
++ 	.uapsd_disable = IWL_DISABLE_UAPSD_BSS | IWL_DISABLE_UAPSD_P2P_CLIENT,
+++	.lar_disable = true,
++ 	.enable_ini = true,
++ 	/* the rest are 0 by default */
++ };
++@@ -1819,6 +1820,9 @@
++ module_param_named(nvm_file, iwlwifi_mod_params.nvm_file, charp, 0444);
++ MODULE_PARM_DESC(nvm_file, "NVM file name");
++ 
+++module_param_named(lar_disable, iwlwifi_mod_params.lar_disable, bool, 0444);
+++MODULE_PARM_DESC(lar_disable, "disable LAR functionality (default: true)");
+++
++ module_param_named(uapsd_disable, iwlwifi_mod_params.uapsd_disable, uint, 0644);
++ MODULE_PARM_DESC(uapsd_disable,
++ 		 "disable U-APSD functionality bitmap 1: BSS 2: P2P Client (default: 3)");
++diff -urN a/drivers/net/wireless/intel/iwlwifi/iwl-modparams.h b/drivers/net/wireless/intel/iwlwifi/iwl-modparams.h
++--- a/drivers/net/wireless/intel/iwlwifi/iwl-modparams.h	2022-04-11 04:01:11.860816700 +0900
+++++ b/drivers/net/wireless/intel/iwlwifi/iwl-modparams.h	2022-07-20 15:17:27.532398484 +0900
++@@ -59,6 +59,7 @@
++  * @nvm_file: specifies a external NVM file
++  * @uapsd_disable: disable U-APSD, see &enum iwl_uapsd_disable, default =
++  *	IWL_DISABLE_UAPSD_BSS | IWL_DISABLE_UAPSD_P2P_CLIENT
+++ * @lar_disable: disable LAR (regulatory), default = true
++  * @disable_11ac: disable VHT capabilities, default = false.
++  * @remove_when_gone: remove an inaccessible device from the PCIe bus.
++  * @enable_ini: enable new FW debug infratructure (INI TLVs)
++@@ -77,6 +78,7 @@
++ #endif
++ 	char *nvm_file;
++ 	u32 uapsd_disable;
+++	bool lar_disable;
++ 	bool disable_11ac;
++ 	/**
++ 	 * @disable_11ax: disable HE capabilities, default = false
++diff -urN a/drivers/net/wireless/intel/iwlwifi/iwl-nvm-parse.c b/drivers/net/wireless/intel/iwlwifi/iwl-nvm-parse.c
++--- a/drivers/net/wireless/intel/iwlwifi/iwl-nvm-parse.c	2022-04-11 04:01:11.864817000 +0900
+++++ b/drivers/net/wireless/intel/iwlwifi/iwl-nvm-parse.c	2022-07-20 15:18:33.294617546 +0900
++@@ -1183,6 +1183,7 @@
++ 	}
++ 
++ 	if (lar_enabled &&
+++		!iwlwifi_mod_params.lar_disable &&
++ 	    fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_LAR_SUPPORT))
++ 		sbands_flags |= IWL_NVM_SBANDS_FLAGS_LAR;
++ 
++@@ -1702,6 +1703,7 @@
++ 	nvm->valid_rx_ant = (u8)le32_to_cpu(rsp->phy_sku.rx_chains);
++ 
++ 	if (le32_to_cpu(rsp->regulatory.lar_enabled) &&
+++		!iwlwifi_mod_params.lar_disable &&
++ 	    fw_has_capa(&fw->ucode_capa,
++ 			IWL_UCODE_TLV_CAPA_LAR_SUPPORT)) {
++ 		nvm->lar_enabled = true;
++diff -urN a/drivers/net/wireless/intel/iwlwifi/mvm/mvm.h b/drivers/net/wireless/intel/iwlwifi/mvm/mvm.h
++--- a/drivers/net/wireless/intel/iwlwifi/mvm/mvm.h	2022-04-11 04:01:11.928817500 +0900
+++++ b/drivers/net/wireless/intel/iwlwifi/mvm/mvm.h	2022-07-20 15:19:13.373938441 +0900
++@@ -1263,6 +1263,9 @@
++ 	bool tlv_lar = fw_has_capa(&mvm->fw->ucode_capa,
++ 				   IWL_UCODE_TLV_CAPA_LAR_SUPPORT);
++ 
+++	if (iwlwifi_mod_params.lar_disable)
+++		return false;
+++
++ 	/*
++ 	 * Enable LAR only if it is supported by the FW (TLV) &&
++ 	 * enabled in the NVM
