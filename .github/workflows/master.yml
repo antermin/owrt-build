@@ -40,6 +40,20 @@ jobs:
         cp ../diffconfig-iwlwifi .config
         make defconfig
 
+    - name: Download toolchain
+      run: |
+        TOOLCHAIN_FILE=$(curl "https://downloads.openwrt.org/snapshots/targets/ramips/mt7621/sha256sums" \
+          | sed -n -e 's/.*\(openwrt-toolchain.*\).tar.xz/\1/p')
+        echo "TOOLCHAIN_FILE=$(pwd)/$TOOLCHAIN_FILE" >> "$GITHUB_ENV"
+        
+        wget -O - https://downloads.openwrt.org/snapshots/targets/ramips/mt7621/${TOOLCHAIN_FILE}.tar.xz \
+          | tar --xz -xf -
+
+    - name: Prepare toolchain
+      run: |
+        cd openwrt
+        ./scripts/ext-toolchain.sh --toolchain $TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain) --overwrite-config --config ramips/mt7621
+
     - name: Download packages
       run: |
         cd openwrt
